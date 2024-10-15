@@ -1,0 +1,130 @@
+<!-- Password input container -->
+<div id="loginOverlay" class="overlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #fff; display: flex; justify-content: center; align-items: center; z-index: 100;">
+  <div class="loginPopup" style="background: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);">
+    <h2 style="margin-top: 0;">Login Required</h2>
+    <p>Please enter the password to access.</p>
+    <input type="password" id="password" placeholder="Password" style="padding: 10px; margin-bottom: 10px; width: 100%; box-sizing: border-box;">
+    <button id="loginButton" style="display: block; width: 100%; padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">Login</button>
+    <p id="errorMessage" style="color: red; display: none;">Incorrect password. Please try again.</p>
+  </div>
+</div>
+
+<!-- Main content initially hidden -->
+<div id="content" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); display: flex; justify-content: center; align-items: center;">
+  <div id="categoriesContainer" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; width: 100%; height: 100%; padding: 20px; box-sizing: border-box;">
+    <!-- Numbers and categories will be generated here dynamically -->
+  </div>
+  <!-- Container for sound permission message -->
+  <div id="soundPermissionOverlay" class="overlay" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); display: flex; flex-direction: column; align-items: center;">
+    <h2 style="margin-top: 0;">Sound Permissions</h2>
+    <p>Activate an alert sound to indicate that the number to be provided has been updated</p>
+    <button id="acceptSound" style="margin-top: 20px; padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">Accept</button>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const loginButton = document.getElementById('loginButton');
+  const passwordInput = document.getElementById('password');
+  const errorMessage = document.getElementById('errorMessage');
+  const loginOverlay = document.getElementById('loginOverlay');
+  const content = document.getElementById('content');
+  const soundPermissionOverlay = document.getElementById('soundPermissionOverlay');
+  const categoriesContainer = document.getElementById('categoriesContainer');
+
+  const excludedCategories = ['AI', 'baneos'];
+
+  loginButton.addEventListener('click', function() {
+    const password = passwordInput.value;
+    if (password === 'ring807') {
+      loginOverlay.style.display = 'none';
+      content.style.display = 'flex';
+      soundPermissionOverlay.style.display = 'flex';
+    } else {
+      errorMessage.style.display = 'block';
+    }
+  });
+
+  const acceptSoundButton = document.getElementById('acceptSound');
+  acceptSoundButton.addEventListener('click', function() {
+    soundPermissionOverlay.style.display = 'none';
+    initializeApp();
+  });
+
+  function initializeApp() {
+    const soundUrl = "https://ringwork.org/wp-content/uploads/2021/02/mixkit-flute-cell-phone-alert-2315.wav";
+
+    function fetchNumbers() {
+      fetch('https://numbers.weareat.work/call-details/next-cat')
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            const filteredCategories = Object.fromEntries(
+              Object.entries(data.categories).filter(([category]) => !excludedCategories.includes(category))
+            );
+            displayCategories(filteredCategories);
+          } else {
+            console.error('Error: Data not loaded correctly');
+          }
+        })
+        .catch(error => console.error('Error loading numbers:', error));
+    }
+
+    fetchNumbers(); // Fetch initial data
+    setInterval(fetchNumbers, 180000); // Fetch data every 3 minutes
+
+    function displayCategories(categories) {
+      categoriesContainer.innerHTML = ''; // Clear existing categories
+      for (const [category, numbers] of Object.entries(categories)) {
+        const categoryDiv = document.createElement('div');
+        categoryDiv.style.display = 'flex';
+        categoryDiv.style.flexDirection = 'column';
+        categoryDiv.style.alignItems = 'center';
+        categoryDiv.style.justifyContent = 'center';
+        categoryDiv.style.background = 'rgba(255, 255, 255, 0.2)';
+        categoryDiv.style.borderRadius = '10px';
+        categoryDiv.style.padding = '20px';
+        
+        const categoryTitle = document.createElement('h2');
+        categoryTitle.style.color = 'white';
+        categoryTitle.textContent = capitalizeFirstLetter(category);
+        categoryDiv.appendChild(categoryTitle);
+
+        const numberContainer = document.createElement('div');
+        numberContainer.id = `numbers-${category}`;
+        categoryDiv.appendChild(numberContainer);
+
+        categoriesContainer.appendChild(categoryDiv);
+
+        updateNumberRandomly(numbers, numberContainer);
+      }
+    }
+
+    function updateNumberRandomly(numbers, container) {
+      showRandomNumber(); // Show a number immediately after loading the data
+
+      setInterval(showRandomNumber, 180000); // Update number every 3 minutes
+
+      function showRandomNumber() {
+        if (numbers.length > 0) {
+          const randomIndex = Math.floor(Math.random() * numbers.length);
+          const selectedNumber = numbers[randomIndex];
+          container.innerHTML = '<h1 style="color: white;">' + selectedNumber + '</h1>';
+          playSound(soundUrl); // Play sound with each update
+        } else {
+          container.innerHTML = '<h1 style="color: white;">Error loading numbers</h1>';
+        }
+      }
+    }
+
+    function playSound(url) {
+      const sound = new Audio(url);
+      sound.play().catch(error => console.error("Error playing sound:", error));
+    }
+
+    function capitalizeFirstLetter(string) {
+      return string.charAt(0).toUpperCase() + string.slice(1);
+    }
+  }
+});
+</script>
